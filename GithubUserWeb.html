@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultar Repositorios de GitHub</title>
+    <!-- Bootstrap 4 -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Google Fonts: Lato y Roboto con variantes itálicas -->
+    <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;1,400;1,700&family=Roboto:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+    <!-- JQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <!-- Tus estilos CSS -->
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif; /* Fuente predeterminada del cuerpo */
+            background-color: #343a40; /* Fondo gris oscuro */
+            color: white;
+        }
+        h2, h3, .card-title {
+            color: #f8f9fa;
+            font-family: 'Lato', sans-serif;
+            font-style: italic; /* Aplicar itálicas a los títulos */
+        }
+        label, .form-control {
+            font-family: 'Lato', sans-serif;
+            font-style: italic; /* Aplicar itálicas al texto del formulario */
+        }
+        .form-control {
+            background-color: #495057;
+            color: white;
+            border: none;
+        }
+        .btn-primary {
+            background-color: #17a2b8;
+            border-radius: 50px;
+        }
+        .btn-primary:hover {
+            background-color: #138496;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            border-radius: 50px;
+        }
+        .table {
+            background-color: #495057;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            color: white;
+        }
+        th {
+            background-color: #17a2b8;
+        }
+        td {
+            background-color: #6c757d;
+        }
+        .spinner-border {
+            margin-top: 20px;
+        }
+        #spinner {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Formulario para buscar el usuario de GitHub -->
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6">
+                <h1 class="text-center">Consulta Repositorios de GitHub</h2>
+                <form id="github-form">
+                    <div class="form-group">
+                        <label for="username">Nombre de usuario de GitHub:</label>
+                        <input type="text" class="form-control" id="username" placeholder="Ingresa el nombre de usuario" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Buscar</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Spinner de carga -->
+        <div class="row justify-content-center mt-3">
+            <div class="col-md-6 text-center">
+                <div id="spinner" class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Cargando...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card con la información del usuario y su avatar -->
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6">
+                <div class="card text-center" id="user-card" style="display:none;">
+                    <div class="card-body">
+                        <img id="user-avatar" class="rounded-circle mb-3" width="150" height="150" src="" alt="Avatar del usuario">
+                        <h5 class="card-title" id="github-user"></h5>
+                        <button id="search-again" class="btn btn-secondary" style="display:none;">Buscar otro usuario</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla para mostrar los repositorios -->
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-10">
+                <h3 class="text-center" id="repo-header" style="display:none;">Repositorios de <span id="github-user-repos"></span></h3>
+                <table class="table table-striped table-hover mt-3" id="repo-table" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Número de Seguidores</th>
+                        </tr>
+                    </thead>
+                    <tbody id="repo-data">
+                    </tbody>
+                </table>
+                <div id="error-message" class="alert alert-danger text-center" style="display:none;">
+                    Usuario no encontrado o no tiene repositorios públicos.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function(){
+            $('#github-form').on('submit', function(event){
+                event.preventDefault();
+                
+                var username = $('#username').val();
+                var apiUrl = `https://api.github.com/users/${username}/repos`;
+                var userUrl = `https://api.github.com/users/${username}`;
+
+                // Limpiar datos previos
+                $('#repo-data').empty();
+                $('#repo-table').hide();
+                $('#error-message').hide();
+                $('#user-card').hide();
+                $('#repo-header').hide();
+                $('#search-again').hide();
+                $('#spinner').show();
+                $('#github-user-repos').text(username);
+
+                // Obtener información del usuario (avatar y nombre)
+                $.get(userUrl, function(user){
+                    $('#user-avatar').attr('src', user.avatar_url);
+                    $('#github-user').text(user.login);
+                    $('#user-card').show();
+                }).fail(function(){
+                    $('#error-message').show();
+                    $('#spinner').hide();
+                });
+
+                // Realizar la búsqueda de repositorios
+                $.get(apiUrl, function(repos){
+                    $('#spinner').hide();
+                    if (repos.length > 0) {
+                        $('#repo-header').show();
+                        $('#repo-table').show();
+                        repos.forEach(function(repo){
+                            var repoRow = `<tr>
+                                <td>${repo.name}</td>
+                                <td>${repo.description ? repo.description : 'No disponible'}</td>
+                                <td>${repo.watchers_count}</td>
+                            </tr>`;
+                            $('#repo-data').append(repoRow);
+                        });
+                        $('#search-again').show();
+                    } else {
+                        $('#error-message').show();
+                    }
+                }).fail(function(){
+                    $('#spinner').hide();
+                    $('#error-message').show();
+                });
+            });
+
+            // Función para volver a buscar otro usuario
+            $('#search-again').on('click', function() {
+                $('#github-form').show();
+                $('#repo-table').hide();
+                $('#user-card').hide();
+                $('#repo-header').hide(); // Oculta el encabezado de repositorios
+                $('#error-message').hide();
+                $('#search-again').hide();
+                $('#username').val(''); // Limpia el campo de búsqueda
+            });
+        });
+    </script>
+
+    <!-- Bootstrap JS y Popper.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
+
+     
